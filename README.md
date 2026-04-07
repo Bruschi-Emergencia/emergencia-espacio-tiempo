@@ -1,2 +1,12 @@
-# emergencia-espacio-tiempo
-Presentamos un marco teórico en el que el espacio-tiempo, la gravedad, la materia oscura, la energía oscura, los agujeros negros, las partículas fundamentales y la asimetría materia-antimateria emergen de la organización estructural de un sustrato de correlaciones cuánticas. No es la cantidad de entrelazamiento, sino su estructura.
+# Emergencia del espacio-tiempo desde la organización del entrelazamiento
+
+Este repositorio contiene el código de simulación y análisis para la propuesta "Dinámica de Estructura de Entrelazamiento y Emergencia del Espacio-Tiempo" (Versión 4.0). Los scripts implementan la red de correlaciones 3D, la ecuación de Langevin hiperbólica, la expansión diferencial, la formación de núcleos incompresibles, la bariogénesis y defectos topológicos.
+
+## Requisitos
+
+- Python 3.8 o superior
+- Bibliotecas: numpy, scipy, matplotlib, emcee, corner, scikit-learn
+
+Instalación rápida:
+```bash
+pip install -r requirements.txt
