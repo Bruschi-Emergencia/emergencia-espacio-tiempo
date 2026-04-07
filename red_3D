@@ -1,4 +1,3 @@
-```python
 """
 Simulación de la red de correlaciones 3D con ecuación de Langevin hiperbólica.
 Calcula la organización media χ, identifica clusters, masa emergente,
