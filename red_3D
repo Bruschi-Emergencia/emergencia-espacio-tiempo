@@ -1,0 +1,181 @@
+```python
+"""
+Simulación de la red de correlaciones 3D con ecuación de Langevin hiperbólica.
+Calcula la organización media χ, identifica clusters, masa emergente,
+dimensión de correlación y genera incrustación MDS.
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.spatial.distance import pdist, squareform
+from sklearn.manifold import MDS
+import sys
+
+# ============================================================
+# PARÁMETROS (ajustables)
+# ============================================================
+N = 120                     # Número de nodos
+L_box = 10.0                # Tamaño de la caja
+T_sim = 1500                # Pasos de evolución
+dt = 0.02                   # Paso de tiempo
+epsilon = 0.12              # Asimetría (ruido)
+gamma = 0.1                 # Amplitud del ruido
+eta = 0.5                   # Coeficiente de inercia (hiperbólico)
+umbral_cluster = 0.6        # Umbral para considerar enlace fuerte
+L_corr0 = 1.5               # Longitud de correlación inicial
+penalizacion_saturacion = 1000.0
+umbral_saturacion = 0.95
+
+# ============================================================
+# INICIALIZACIÓN
+# ============================================================
+np.random.seed(42)
+coords = np.random.rand(N, 3) * L_box
+
+def dist_matrix(coords):
+    return np.linalg.norm(coords[:,None,:] - coords[None,:,:], axis=-1)
+
+D = dist_matrix(coords)
+S = np.exp(-D / L_corr0)
+np.fill_diagonal(S, 0)
+S = S / np.max(S)
+S_prev = S.copy()
+
+# ============================================================
+# FUNCIONES
+# ============================================================
+def compute_chi_node(S, i):
+    """Entropía de Shannon de la distribución de correlaciones del nodo i"""
+    probs = S[i, :] / (np.sum(S[i, :]) + 1e-12)
+    probs = np.clip(probs, 1e-12, 1)
+    return -np.sum(probs * np.log(probs))
+
+def compute_chi_mean(S):
+    chi_vals = [compute_chi_node(S, i) for i in range(N)]
+    return np.mean(chi_vals)
+
+def gradiente_F_local(S, i, j, eps=1e-6):
+    def F_total(Smat):
+        triu = np.triu_indices_from(Smat, k=1)
+        Sij = Smat[triu]
+        term1 = -np.sum(Sij)
+        term2 = np.sum(Sij**2)
+        sobre = np.maximum(0, Sij - umbral_saturacion)
+        term4 = penalizacion_saturacion * np.sum(sobre**4)
+        grad = 0.0
+        for a in range(N):
+            row = Smat[a, :]
+            row_mean = np.mean(row)
+            grad += np.sum((row - row_mean)**2)
+        return term1 + term2 + 0.1 * grad + term4
+    S_plus = S.copy()
+    S_plus[i, j] += eps
+    S_plus[j, i] = S_plus[i, j]
+    S_minus = S.copy()
+    S_minus[i, j] -= eps
+    S_minus[j, i] = S_minus[i, j]
+    return (F_total(S_plus) - F_total(S_minus)) / (2*eps)
+
+def correlation_dimension(points, r_min=0.2, r_max=5.0, n_r=20):
+    """Calcula la dimensión de correlación de Grassberger-Procaccia"""
+    dists = pdist(points)
+    r_vals = np.logspace(np.log10(r_min), np.log10(r_max), n_r)
+    C = np.array([np.mean(dists < r) for r in r_vals])
+    log_r = np.log10(r_vals)
+    log_C = np.log10(C)
+    mask = (log_C > -3) & (log_C < -0.5)
+    if np.sum(mask) < 5:
+        return np.nan
+    slope = np.polyfit(log_r[mask], log_C[mask], 1)[0]
+    return slope
+
+# ============================================================
+# EVOLUCIÓN
+# ============================================================
+hist_chi = []
+for step in range(T_sim):
+    # Gradiente y ruido
+    grad = np.zeros_like(S)
+    for i in range(N):
+        for j in range(i+1, N):
+            g = gradiente_F_local(S, i, j)
+            grad[i, j] = g
+            grad[j, i] = g
+    ruido = gamma * epsilon * np.random.randn(N, N) * np.sqrt(dt)
+    ruido = (ruido + ruido.T) / 2
+    np.fill_diagonal(ruido, 0)
+    
+    fuerza = -grad + ruido
+    S_new = 2*S - S_prev + fuerza * dt**2 + eta * (S - S_prev) * dt
+    S_new = (S_new + S_new.T) / 2
+    S_new = np.clip(S_new, 0, 1)
+    np.fill_diagonal(S_new, 0)
+    
+    S_prev = S.copy()
+    S = S_new.copy()
+    
+    chi_mean = compute_chi_mean(S)
+    hist_chi.append(chi_mean)
+    
+    if step % 500 == 0:
+        print(f"Paso {step}/{T_sim}, ⟨χ⟩ = {chi_mean:.3f}")
+
+# ============================================================
+# ANÁLISIS POST-SIMULACIÓN
+# ============================================================
+# 1. Identificar clusters
+adj = (S > umbral_cluster).astype(int)
+visited = np.zeros(N, bool)
+clusters = []
+for i in range(N):
+    if not visited[i]:
+        queue = [i]
+        visited[i] = True
+        comp = [i]
+        while queue:
+            u = queue.pop(0)
+            for v in range(N):
+                if adj[u, v] and not visited[v]:
+                    visited[v] = True
+                    queue.append(v)
+                    comp.append(v)
+        clusters.append(comp)
+
+cluster_main = max(clusters, key=len)
+print(f"Tamaño del cluster principal: {len(cluster_main)} nodos (de {N})")
+
+# 2. Masa emergente
+M = 0.0
+for i in cluster_main:
+    for j in cluster_main:
+        if i < j:
+            M += S[i, j]
+print(f"Masa emergente M = {M:.3f}")
+
+# 3. Dimensión de correlación (usando coordenadas originales, no métricas)
+dim = correlation_dimension(coords)
+print(f"Dimensión de correlación del espacio emergente: {dim:.2f}")
+
+# 4. Incrustación MDS en 2D
+d_ij = -np.log(S + 1e-8)
+mds = MDS(n_components=2, dissimilarity='precomputed', random_state=42)
+coords_mds = mds.fit_transform(d_ij)
+
+plt.figure(figsize=(8,6))
+plt.scatter(coords_mds[:,0], coords_mds[:,1], c='blue', s=10, alpha=0.6)
+plt.title("Incrustación 2D de la métrica emergente")
+plt.xlabel("Componente 1")
+plt.ylabel("Componente 2")
+plt.grid(True)
+plt.show()
+
+# 5. Evolución de χ
+plt.figure()
+plt.plot(hist_chi)
+plt.xlabel("Paso temporal")
+plt.ylabel("⟨χ⟩")
+plt.title("Evolución de la organización media")
+plt.grid(True)
+plt.show()
+
+print("Simulación red_3D finalizada.")
