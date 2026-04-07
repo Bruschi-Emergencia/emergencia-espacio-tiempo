@@ -64,5 +64,14 @@ Si no se tienen datos reales, los scripts de MCMC generan datos simulados para d
 
 Los gráficos se guardan en pantalla (pop-ups) o pueden modificarse para guardar en archivos.
 
-Licencia
+###### Requirimientos
+
+numpy>=1.19
+scipy>=1.5
+matplotlib>=3.2
+emcee>=3.0
+corner>=2.1
+scikit-learn>=0.22
+
+####### Licencia
 MIT. Se agradece cita al autor original (incluir referencia al documento)
