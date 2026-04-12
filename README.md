@@ -113,7 +113,7 @@ emergencia-espacio-tiempo/
 # Celda 1
 !pip install numpy scipy matplotlib tqdm zenodo-get -q
 !git clone https://github.com/Bruschi-Emergencia/emergencia-espacio-tiempo.git
-%cd emergencia-espacio-tiempo/simulaciones
+%cd emergencia-espacio-tiempo/
 ```
 
 ### Correr simulaciones individuales
