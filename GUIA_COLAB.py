@@ -32,7 +32,7 @@ CELDA_0 = """
 
 # Clonar repositorio DEE v2.0
 !git clone https://github.com/Bruschi-Emergencia/emergencia-espacio-tiempo.git
-%cd emergencia-espacio-tiempo/simulaciones
+%cd emergencia-espacio-tiempo/
 
 # Verificar archivos disponibles
 import os
