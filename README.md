@@ -140,6 +140,10 @@ emergencia-espacio-tiempo/
 
 # SIM 7 (~15 min): α por tipo morfológico
 !python sim7_morfologia.py
+
+# SIM 8 (~15 min): Parte analítica
+!python sim8_kappa_mesocopico.py
+
 ```
 
 ### Descargar todos los resultados
